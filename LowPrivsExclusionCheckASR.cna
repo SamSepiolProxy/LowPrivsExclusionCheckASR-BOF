@@ -1,0 +1,61 @@
+#
+# LowPrivsExclusionCheckASR BOF - Aggressor Script
+# 
+# Usage in Cobalt Strike:
+#   1. Load this script: Script Manager -> Load
+#   2. Run command: lowprivsexclusioncheck
+#
+
+beacon_command_register(
+    "lowprivsexclusioncheckASR",
+    "Scan Windows Defender ASR configuration via Event Log (no admin required)",
+    "
+Synopsis: lowprivsexclusioncheck
+
+Description:
+    Enumerates Windows Defender configuration by reading Event ID 5007 
+    from the Defender Operational log. Displays:
+    
+    - Defender path/extension exclusions
+    - ASR exclusions 
+    - ASR rule states (Disabled/Block/Audit/Warn)
+
+Requirements:
+    - Standard user privileges (no admin required)
+    - Event Log service must be running
+    - Windows Defender operational log must exist
+
+Note: 
+    Event ID 5007 only records configuration changes. Rules that were
+    never modified will not appear in the event log.
+"
+);
+
+alias lowprivsexclusioncheckASR {
+    local('$barch $handle $data $args');
+    
+    # Get beacon architecture
+    $barch = barch($1);
+    
+    # Read appropriate BOF
+    if ($barch eq "x64") {
+        $handle = openf(script_resource("LowPrivsExclusionCheckASR.x64.o"));
+    } else {
+        $handle = openf(script_resource("LowPrivsExclusionCheckASR.x86.o"));
+    }
+    
+    $data = readb($handle, -1);
+    closef($handle);
+    
+    if (strlen($data) == 0) {
+        berror($1, "Could not read LowPrivsExclusionCheckASR BOF file");
+        return;
+    }
+    
+    # Pack arguments (none for this BOF)
+    $args = bof_pack($1, "");
+    
+    # Execute BOF
+    btask($1, "Running LowPrivsExclusionCheckASR - Windows Defender ASR Scanner");
+    beacon_inline_execute($1, $data, "go", $args);
+}
